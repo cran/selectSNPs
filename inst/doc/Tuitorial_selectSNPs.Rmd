@@ -1,0 +1,146 @@
+---
+title: "Selecting SNPs using a unified local function - A simple tuitorial"
+author: "Xiao-Lin Nick Wu (Neogen GeneSeek Biostatistics & Bioinformatics)"
+date: "January 20, 2020"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Selecting SNPs using a unified local function - A simple tuitorial}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, include=FALSE}
+library(selectSNPs)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This is a simple tuitorial to illustrate the use of the unified local function to select low-density SNPs, implemented in the selectSNPs R package. This R package is available for educational use only and some advanced features are not included. Further information regarding this R package is avaiable upon request to Dr. Xiao-Lin Nick Wu (nwu<at>neogen.com; nwu8<at>wisc.edu). 
+
+Over the years, ad-hoc procedures were used for designing SNP chips. Often, the strategies were to select uniformly-distributed SNPs, either with or without a cutoff for SNP minor allele frequency (MAF), or select SNPs having strong association effects on quantitative traits, with some constraints considered in series. Recently, a multiple-objective, local optimization (MOLO) algorithm has been proposed, which evaluates multiple factors jointly when selecting optimal SNPs (Wu et al., 2016). This MOLO algorithm maximizes the adjusted SNP information (namely adjusted E score) under multiple constraints, e.g., on MAF, uniformness of SNP locations, the inclusion of obligatory SNPs, and the number and size of possible gaps. The computing of the adjusted E score (formula 12; Wu et al., 2016), however, is empirical, and it does not scale well between the uniformness of SNP locations and SNP informativeness. Additionally, the MOLO objective function does not accommodate selecting uniformly-distributed SNPs alone. We, therefore, proposed a unified, local function for optimal selection of SNPs in the present study, as an amendment to the local function in the MOLO algorithm. 
+
+Of the many factors to be considered, two are of essential importance for the design of low-density SNP chips: the information and locations of the selected SNPs. In the MOLO, SNP information is measured by the Shannon entropy, and the latter is a function of SNP MAF. Average Shannon entropy is referred to as the E-score. In information theory, entropy is the average amount of information contained in each message received. For SNP selection, a message refers to an allele. Considering m SNPs, for example. The E score is computed for each SNP and then averaged across all SNPs, as follows:
+
+&emsp;&emsp;	$E=(-1/m)\sum_{j=1}^{m}[q_j (log_2 (q_j))+(1-q_j)(log_2(1-q_j))]$ 
+
+where _q_ is the minor allele frequency of SNP _j_. For a single SNP, _E_ is maximized and equals 1 (i.e., 1 bit) when $q_j=(1-q_j)=0.5$. Without loss of generality, the Shannon entropy is _m_ bits when selecting m SNPs, when each has two equally probable alleles. The _E_ score is computed as the average of Shannon entropy across _m_ loci, which has one as the maximum. The relationship between the _E_ score and MAF is shown the Figure below, which resembles a parabola curve, with the _E_ score reaching its maximum at MAF = 0.5. Thus, maximizing the _E_ score is equivalent to maximizing MAF, except that the former tends to select more SNPs of large MAF than the latter. Note that Shannon entropy can be computed similarly for all possible haplotypes. When multiple correlated populations are involved, SNPs can be selected jointly based on weighted MAF or E score. Otherwise, population-specific SNPs will have to be selected based on adjusted MFA or E score computed for each population.
+
+```{r MAF, echo=FALSE}
+x<-seq(0,1,length.out=100)
+y<-(-1)*(x*log2(x)+(1-x)*log2(1-x))
+
+plot(y~x,type="p",xlab="Allele A frequency",ylab="E score (t1=1)")
+abline(v=0.5)
+
+y100<-y^100
+plot(y100~x,type="p",xlab="Allele A frequency",ylab="E score (t1=100)")
+abline(v=0.5)
+```
+
+The uniformness of SNPs on each chromosome or chromosomal segment is measured by the _U_ score. Let there be $n_t$ selected SNPs on a chromosomal segment and let $δ_j$ be the spacing distance between SNP _j_ and SNP _{(j+1)}_, for _j_=1,…,($n_{t-1}$). Furthermore, let there be the same number of perfectly uniformly-distributed "virtual" SNPs (PUD-VSNPs) on the same chromosome segment, flanked by the first SNP and the last SNP. Let the spacing between two neighboring SNPs say _j_ and _{(j+1)}_, be denoted by $τ_j$. Then, the _U_ score is computed to be the square root of the ratio of the mean squared spacing between two adjacent PUD-VSNPs over that between adjacent selected SNPs. That is,   
+
+&emsp;&emsp;	$U=\sqrt{\frac{(1/(n_t-1))\sum_{j=1}^{n_t-1}τ_j^2}{(1/(n_t-1))\sum_{j=1}^{n_t-1}δ_j^2}}$
+$=\sqrt{\frac{\sum_{j=1}^{n_t-1}τ_j^2}{\sum_{j=1}^{n_t-1}δ_j^2}}$
+
+Note that _U_≤1 because $\frac{1}{(n_t-1)}\sum_{j=1}^{n_t-1}τ_j^2  ≤ \frac{1}{(n_t-1)}\sum_{j=1}^{n_t-1}δ_j^2$. 
+
+Finally, a weighted local score is computed as follows:  
+
+&emsp;&emsp; $f=w_1×h^{t_1}+w_2×u^{t_2}$
+
+In the above, __h__ is a vector of _E_ score, __u__ is a vector of _U_ score, $t_1$ and $t_2$ are tuning parameters (between 0 and 100), and $w_1$ and $w_2$ are the weights for __h__ and __u__, respectively, under the restriction of $w_1+w_2=1$. The above is also referred to as the unified local function, because it scales well between the _E_ score and the _U_ score, and it allows selecting SNPs under various scenarios. For example, letting $w_1=0$ and $w_2=1$ leads to a subset of uniformly-distributed SNPs; letting $w_1=1$ and $w_2=0$ leads to a subset of high-MAF SNPs; letting $0<w_1<1$ and $0<w_2<1$ allows selecting locally-optimal SNPs, depending on the relative values of the two weights. The larger shrinkge on the _E_ score (or _U_ score), the less probably that a SNP with a low _E_ (or _U_) value will be selected. When $t_1=0$, all SNPs have equal contributions of their _E_ scores, thus leading to uniformly-distributed SNPs. Similarly, when $t_2=0$, all SNPs have equal contributions of their _U_ scores, thus leading to a set of SNPs with largest minor allele frequencies within each chromosome region. The tuning parameters decides the strength of shrinkage effects on the contribution of the _U_ score and _E_ score, respectively.
+
+
+## Data types
+
+There are three basic data classes, Locus, Chrom, and Map. The Locus class represents a locus for a gene or a genetic marker. It has six slots: Name, Chromosome, Position, Maf, Type, and Status. There are three possible values for the Type slot: A, B, and C, corresponding to the three Normalization_Bins used by the Illumina. Bin C assays include all Infinium II designs requiring a single bead type. Bin A and B assays are Infinium I designs in the red and green channels, respectively, and are classified into 1 of these 2 bins based on the color channelrequired to detect the target alleles across the 2 bead types used in the Infinium I assay. There are two values for Status: 1 for obligatory SNPs and 0 otherwise. The Chrom class represents a chromosome, which as six slots of the same names, each of them being a vector except the chromosome name (Chrom). In what follows, we illustrate how to create a Locus object and a Chrom object. 
+
+```{r example_data_objects, echo=TRUE}
+snp1<-new("Locus",
+          Name="SNP1",
+          Chromosome="1",
+          Position=600000,
+          Maf=0.20,
+          Type="C",
+          Status=as.integer(0))
+str(snp1)
+
+chr1<-new("Chrom",
+          Chromosome="1",
+          Name=paste("SNP",1:10,sep=""),
+          Position=seq(600000,11000000,length.out=10),
+          Maf=runif(10,0,0.5),
+          Type=rep("C",10),
+          Status=as.integer(rep(0,10)))
+str(chr1)
+```
+
+The Map class is defined as a list of Chrom objects, yet the simplest Map object can have only one chromosome. In simulation, for example, one can simulate chromosomes one by one and then construct a Map using a list of simulated chromosomes. In practice, however, one does not have to create Chrom objects in order to build a Map object. Instead, map information can be read from any input file into a data frame and convert this data frame into a Map object using the "as.Map" function.  
+
+In this package, there is a bovine 80K SNP Map object ("bov80K") as the example dataset. It has information for for 76,694 SNPs on 30 chromosomes, with chromosome X represented by 30. Please note that these Maf data were arbitarily taken and their coincidence with any cattle breed is incidental. Also, the Type and the Status values are exact and they are used for demonstration only. Summary of this Map object is shown below. 
+
+```{r bov80K, echo=TRUE}
+data(bov80K)
+summary(bov80K)
+plotMap(bov80K)
+u80K<-scoreU(bov80K)
+e80K<-scoreE(bov80K)
+```
+
+A Map object can be converted into a data frame, and vice versa. The latter also demonstrates a convenient way of building a Map object from a data frame.
+
+```{r bov80K_continued, echo=TRUE}
+tmpdat<-as.data.frame(bov80K)
+head(tmpdat)
+tmpdat<-tmpdat[(tmpdat$Chromosome%in%c(1,10,15)),]
+map1a<-as.Map(tmpdat)
+str(map1a)
+```
+
+
+## Select 2000 SNPs using the unified local function
+
+Using the uniform local function, one can select a subset of SNPs by giving different values to $w_1$ and $w_2$, depending varied scenarios for the low-density chip. 
+
+### Selecting 2000 locally-optimal SNPs
+
+In the following, we select 2000 locally-optimal SNPs by letting $w_1 = 0.5$ and $w_2 = 0.5$. Noe that the weigths can be set up differently, subject to $w_1 + w_2 = 1$.
+
+```{r map1, echo=TRUE}
+map1<-selectLocalOptimalSNPs(bov80K,n=2000,w1=0.5,w2=0.5)
+summary(map1)
+plotMap(map1)
+u1<-scoreU(map1)
+e1<-scoreE(map1)
+```
+
+### Selecting 2000 uniformly-distributed SNPs
+
+If we let $w_1 = 0$ and $w_2 = 1$, it is equivalent to selecting SNPs based on the _U_ scores solely, thus leading to a set uniformly-distributed SNPs. 
+
+```{r map2, echo=TRUE}
+map2<-selectLocalOptimalSNPs(bov80K,n=2000,w1=0,w2=1)
+plotMap(map2)
+u2<-scoreU(map2)
+e2<-scoreE(map2)
+```
+
+### Selecting 2000 uniformly-distributed SNPs
+
+Likewise, if we let $w_1 = 0$ and $w_2 = 1$, it is equivalent to selecting SNPs based on the _E_ scores solely, thus leading to a subset of SNPs with the highest minor allele frequencies at local chromosome regions. 
+
+```{r map3, echo=TRUE}
+map3<-selectLocalOptimalSNPs(bov80K,n=2000,w1=1,w2=0)
+plotMap(map3)
+u3<-scoreU(map3)
+e3<-scoreE(map3)
+```
+
+
+### References
+
+1. Wu X-L, Li H, Ferretti R, Simpson B, Walker J, Parham J, Mastro L, Qiu J, Schultz T, Tait RG. Jr., and Bauck S. (2020) A unified local objective function for optimally selecting SNPs on arrays for agricultural genomics applications. Anim. Genet. (accepted)
+
+2. Wu XL, Xu J, Feng G, Wiggans GR, Taylor JF, He J, Qian C, Qiu J, Simpson B, Walker J, Bauck S. Optimal Design of Low-Density SNP Arrays for Genomic Prediction: Algorithm and Applications. PLoS One. 2016, 11(9):0161719. doi: 10.1371/journal.pone.0161719. eCollection 2016.
+

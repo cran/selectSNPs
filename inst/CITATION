@@ -1,0 +1,29 @@
+citHeader("To cite selectSNPs in publications use:")
+
+citEntry(entry = "Article",
+         title        = "A unified local objective function for optimally selecting SNPs on arrays for agricultural genomics applications",
+         author       = personList(as.person("Xiao-Lin Wu"),
+                                   as.person("Hao Li"),
+                                   as.person("Ryan Ferretti"),
+                                   as.person("Barry Simpson"),
+                                   as.person("Jeremy Walker"),
+                                   as.person("Jamie Parham"),
+                                   as.person("Laura Mastro"),
+                                   as.person("Jiansheng Qiu"),
+                                   as.person("Richard G. Tait Jr."),
+                                   as.person("Stewart Bauch")),
+         journal      = "Animal Genetics",
+         year         = "2020",
+         volume       = "51",
+         number       = "2",
+         pages        = "Epub ahead of print",
+         url          = "https://www.ncbi.nlm.nih.gov/pubmed/32004392",
+         
+         textVersion  =
+           paste("Xiao-Lin Wu, Hao Li, Ryan Ferretti, Barry Simpson, Jeremy Walker, Jamie Parham,",
+                 "Laura Mastro, Jiansheng Qiu, Tom Schultz, Richard G. Tait Jr., Stewart Bauck. (2020).",
+                 "A unified local objective function for optimally selecting ",
+                 "SNPs on arrays for agricultural genomics applications.",
+                 "Animal Genetics, 51, Epub ahead of print.",
+                 "URL https://www.ncbi.nlm.nih.gov/pubmed/32004392.")
+)
